@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
+import networkx as nx
 
 
 def load_data(county='025-imperial'):
@@ -52,3 +53,63 @@ def plot_simplices(points, simplex_tree, max_epsilon):
             ax.add_patch(p)
 
     plt.show()
+
+
+def persistance_1D_with_loops(simplex_tree):
+    '''
+    Returns [(birth, death), loop, long_lived]
+    '''
+    persistance = simplex_tree.persistence()
+    persistance1 = [birth_death for (
+        dim, birth_death) in persistance if dim == 1]
+    persistance1.sort(key=lambda x: x[0])
+
+    homology_birth_times = [birth for (birth, death) in persistance1]
+    edges = [x for x in simplex_tree.get_filtration() if len(x[0]) == 2]
+    edge_distances = [dist for (_, dist) in edges]
+
+    print("Assumption 1: No 2 homology classes have the same birth time")
+    print("\tsatisified:", len(set(homology_birth_times))
+          == len(homology_birth_times))
+    print()
+
+    print("Assumption 2: No 2 edges have the same length.")
+    print("\tsatisified:", len(set(edge_distances)) == len(edge_distances))
+    print()
+
+    edge_by_distance = {dist: edge for (edge, dist) in edges}
+
+    graph = nx.Graph()
+    loops = []
+    for birth_time in homology_birth_times:
+        v1, v2 = edge_by_distance[birth_time]
+        graph.add_weighted_edges_from([(v1, v2, dist) for (
+            (v1, v2), dist) in edges if dist < birth_time])
+
+        loop = nx.shortest_path(graph, source=v1, target=v2, weight="weight")
+        loops.append(loop)
+
+    # Isfiltriram feature koji kratko zive
+    max_life = max(death - birth for (birth, death) in persistance1)
+    long_lived = [(death - birth) / max_life >=
+                  0.75 for (birth, death) in persistance1]
+    print(sum(long_lived))
+
+    return list(zip(persistance1, loops, long_lived))
+
+
+def plot_loops(gdf, points, persistance_1D_with_loops):
+    ax = gdf.plot("per_clinton", legend=True, cmap='RdBu',
+                  figsize=(20, 12), vmin=0, vmax=1)
+    loops = [x[1] for x in persistance_1D_with_loops]
+    long_lived_list = [x[2] for x in persistance_1D_with_loops]
+    for loop, long_lived in zip(loops, long_lived_list):
+        x = [points[idx][0] for idx in loop]
+        x.append(x[0])
+        y = [points[idx][1] for idx in loop]
+        y.append(y[0])
+        linewidth = 3 if long_lived else 1
+        color = 'darkred' if long_lived else 'indianred'
+#         color = 'darkgreen' if long_lived else 'lightgreen'
+
+        ax.plot(x, y, color=color, linewidth=linewidth)
