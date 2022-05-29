@@ -55,7 +55,7 @@ def plot_simplices(points, simplex_tree, max_epsilon):
     plt.show()
 
 
-def persistance_1D_with_loops(simplex_tree):
+def persistence_1D_with_loops(simplex_tree, adjacency_complex=False):
     '''
     Returns [(birth, death), loop, long_lived]
     '''
@@ -73,32 +73,39 @@ def persistance_1D_with_loops(simplex_tree):
           == len(homology_birth_times))
     print()
 
-    print("Assumption 2: No 2 edges have the same length.")
+    print("Assumption 2: No 2 edges have the same length. (Doesn't have to be satisfied.)")
     print("\tsatisified:", len(set(edge_distances)) == len(edge_distances))
     print()
 
-    edge_by_distance = {dist: edge for (edge, dist) in edges}
-
     graph = nx.Graph()
     loops = []
-    for birth_time in homology_birth_times:
-        v1, v2 = edge_by_distance[birth_time]
+    max_life = max(death - birth for (birth, death) in persistance1)
+    long_lived = []
+    for birth_time, death_time in persistance1:
+        # edges that were added to the filtration at birth_time
+        edges_added_now = [edge for edge in edges if edge[1] == birth_time]
         
+        # To current graph add all edges that were added to the filtration 
+        # before the birth time of the current homology class.
         graph.add_weighted_edges_from([(v1, v2, dist) for (
             (v1, v2), dist) in edges if dist < birth_time])
         
-        graph.add_node(v1)
-        graph.add_node(v2)
-        loop = nx.shortest_path(graph, source=v1, target=v2, weight="weight")
-        loops.append(loop)
+        # Add current edges one-by-one and check if any closes a loop
+        for ((v1, v2), dist) in edges_added_now:
+            try:
+                loop = nx.shortest_path(graph, source=v1, target=v2, weight="weight")
+                if(not adjacency_complex or len(loop) > 3):
+                    loops.append(loop)
+                    long_lived.append(death_time == float('inf') or (death_time - birth_time) / max_life >= 0.75)
+                else:
+                    raise Exception
+            except:
+                graph.add_weighted_edges_from([(v1, v2, dist)])
+                
 
-    # Isfiltriram feature koji kratko zive
-    max_life = max(death - birth for (birth, death) in persistance1)
-    long_lived = [(death - birth) / max_life >=
-                  0.75 for (birth, death) in persistance1]
-    print(sum(long_lived))
 
     return list(zip(persistance1, loops, long_lived))
+
 
 
 def plot_loops(gdf, points, persistance_1D_with_loops):
