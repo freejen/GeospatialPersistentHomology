@@ -83,9 +83,12 @@ def persistance_1D_with_loops(simplex_tree):
     loops = []
     for birth_time in homology_birth_times:
         v1, v2 = edge_by_distance[birth_time]
+        
         graph.add_weighted_edges_from([(v1, v2, dist) for (
             (v1, v2), dist) in edges if dist < birth_time])
-
+        
+        graph.add_node(v1)
+        graph.add_node(v2)
         loop = nx.shortest_path(graph, source=v1, target=v2, weight="weight")
         loops.append(loop)
 
