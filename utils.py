@@ -132,7 +132,7 @@ def get_adjacency_simplex_tree(gdf, pct_id_to_vert):
     edges = []
     triangles = []
 
-    while delta >= 0.5:
+    while delta >= 0:
         curr_complex = []
         vertices = gdf[gdf['delta'] >= delta].index.tolist()
     
@@ -199,7 +199,7 @@ def get_adjacency_simplex_tree(gdf, pct_id_to_vert):
                         edge3.append(edges[j][1] if v2 == edges[j][0] else edges[j][0])
                 
                     edge3.sort()
-                    for k in range(j+1, len(edges)):
+                    for k in range(len(edges)):
                         if np.array_equal(edge3, edges[k]):
                             triangle = [v1, v2]
                             for v in edges[k]:
